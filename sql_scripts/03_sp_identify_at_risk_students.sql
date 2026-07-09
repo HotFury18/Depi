@@ -1,15 +1,11 @@
--- Destination table for batch job
-CREATE TABLE AtRiskStudentsReport (
-    LogID INT IDENTITY(1,1) PRIMARY KEY,
-    LogDate DATETIME,
-    StudentID INT,
-    MathScore INT,
-    ReadingScore INT,
-    InterventionNeeded VARCHAR(50)
-);
+-- ====================================================================
+-- Script: 03_sp_identify_at_risk_students.sql
+-- Description: Batch job procedure to log historical hard-failures.
+-- ====================================================================
+
+USE StudentPerformanceDB;
 GO
 
--- Stored Procedure for automation
 CREATE PROCEDURE sp_IdentifyAtRiskStudents
 AS
 BEGIN
@@ -23,7 +19,8 @@ BEGIN
         ReadingScore,
         'Math/Reading Support Required'
     FROM 
-        StudentPerformance
+        Fact_StudentScores
     WHERE 
         MathScore < 50 OR ReadingScore < 50;
 END;
+GO
