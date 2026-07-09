@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ------------------------------------------------------------------
+  # Fast job: no database needed. Runs on every push/PR.
+  # ------------------------------------------------------------------
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run unit tests (data cleaning + model contract)
+        run: pytest tests/test_pipeline.py -v
+
+      - name: Sanity-check pipeline scripts compile
+        run: |
+          python -m py_compile train_model.py
+          python -m py_compile medallion_pipeline.py
+
+  # ------------------------------------------------------------------
+  # Slower job: spins up a real SQL Server, applies the schema, runs the
+  # full pipeline against it, and runs the SQL integration tests.
+  # ------------------------------------------------------------------
+  integration-tests:
+    runs-on: ubuntu-latest
+    services:
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: "Y"
+          MSSQL_SA_PASSWORD: "CIPassw0rd!Strong"
+        ports:
+          - 1433:1433
+        options: >-
+          --health-cmd="/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P 'CIPassw0rd!Strong' -Q 'SELECT 1'"
+          --health-interval=10s
+          --health-timeout=10s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ODBC driver and sqlcmd
+        run: |
+          curl https://packages.microsoft.com/keys/microsoft.asc | sudo tee /etc/apt/trusted.gpg.d/microsoft.asc
+          curl https://packages.microsoft.com/config/ubuntu/22.04/prod.list | sudo tee /etc/apt/sources.list.d/mssql-release.list
+          sudo apt-get update
+          sudo ACCEPT_EULA=Y apt-get install -y msodbcsql18 mssql-tools18
+          echo "/opt/mssql-tools18/bin" >> "$GITHUB_PATH"
+
+      - name: Install Python dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Apply schema and stored procedures
+        run: |
+          for f in sql_scripts/01_create_database_and_schema.sql \
+                   sql_scripts/02_sp_load_star_schema.sql \
+                   sql_scripts/03_sp_identify_at_risk_students.sql \
+                   sql_scripts/04_vw_performance_by_education.sql; do
+            echo "Applying $f"
+            sqlcmd -C -S localhost -U sa -P 'CIPassw0rd!Strong' -i "$f"
+          done
+
+      - name: Run trained model against the pipeline (end-to-end smoke test)
+        env:
+          STUDENT_DB_CONNECTION_STRING: "Driver={ODBC Driver 18 for SQL Server};Server=localhost;Database=StudentPerformanceDB;UID=sa;PWD=CIPassw0rd!Strong;TrustServerCertificate=yes;"
+        run: |
+          python train_model.py
+          python medallion_pipeline.py
+
+      - name: Run SQL integration tests
+        env:
+          STUDENT_DB_CONNECTION_STRING: "Driver={ODBC Driver 18 for SQL Server};Server=localhost;Database=StudentPerformanceDB;UID=sa;PWD=CIPassw0rd!Strong;TrustServerCertificate=yes;"
+        run: pytest tests/test_sql_integration.py -v

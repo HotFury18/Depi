@@ -1,0 +1,20 @@
+{
+  "model_version": "e05394d3b0a5",
+  "trained_at_utc": "2026-07-09T02:30:59.069615+00:00",
+  "sklearn_version": "1.8.0",
+  "training_rows": 800,
+  "test_rows": 200,
+  "at_risk_label_definition": "MathScore < 50 OR ReadingScore < 50 (WritingScore not included, see comment above)",
+  "features": [
+    "Gender",
+    "RaceEthnicity",
+    "ParentalEducation",
+    "LunchType",
+    "TestPreparationCourse"
+  ],
+  "metrics": {
+    "roc_auc": 0.7207403375068044,
+    "at_risk_precision": 0.273972602739726,
+    "at_risk_recall": 0.6060606060606061
+  }
+}

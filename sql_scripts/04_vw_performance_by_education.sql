@@ -6,7 +6,7 @@
 USE StudentPerformanceDB;
 GO
 
-CREATE VIEW vw_PerformanceByParentEducation AS
+CREATE OR ALTER VIEW vw_PerformanceByParentEducation AS
 SELECT 
     d.ParentalEducation,
     COUNT(f.StudentID) AS TotalStudents,
