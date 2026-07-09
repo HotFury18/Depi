@@ -31,3 +31,20 @@ The pipeline implements a **Medallion Architecture (Data Lake)** and an automate
 * `train_model.py` - The script used to train the Random Forest classification model.
 * `student_risk_model.pkl` - The serialized Machine Learning model.
 * `StudentPerformance_Dashboard.pbix` - The Power BI dashboard.
+
+## 🚀 How to Run the Project from Scratch
+
+**1. Setup Environment**
+* Clone the repository.
+* Run `pip install -r requirements.txt` to install all dependencies.
+
+**2. Setup the Data Warehouse**
+* Ensure you have a local SQL Server instance running (default script uses `(localdb)\MSSQLLocalDB`).
+* Execute the SQL scripts in the `/sql_scripts/` folder in numerical order to create the database, Star Schema, and Stored Procedures.
+
+**3. Execute the Pipeline**
+* Run `medallion_pipeline.py`. This will clean the raw CSV, generate ML predictions, upload to the staging table, and trigger the SQL Stored Procedure to populate the Data Warehouse.
+
+**4. View the Analytics**
+* Open `StudentPerformance_Dashboard.pbix` in Power BI.
+* If prompted, update the Data Source settings to point to your local SQL Server instance.

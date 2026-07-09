@@ -1,0 +1,6 @@
+pandas
+pyarrow
+SQLAlchemy
+pyodbc
+scikit-learn
+joblib
